@@ -59,6 +59,12 @@ Will be stripped from links addresses on the final HTML."
   :type 'string
   :group 'endless)
 
+(defun tl/publishable ()
+  (org-back-to-heading)
+  (and
+   (-contains? (org-get-tags) "export")
+   (string= (org-get-todo-state) "READY")))
+
 (defun endless/export-to-blog (dont-show)
   "Exports current subtree as jekyll html and copies to blog.
 Posts need very little to work, most information is guessed.
@@ -76,13 +82,13 @@ will be a sanitised version of the title, see
   (save-excursion
     ;; Actual posts NEED a TODO state. So we go up the tree until we
     ;; reach one.
-    (while (null (org-entry-get (point) "TODO" nil t))
+    (while (null (tl/publishable))
       (outline-up-heading 1 t))
     (org-entry-put (point) "EXPORT_JEKYLL_LAYOUT"
                    (org-entry-get (point) "EXPORT_JEKYLL_LAYOUT" t))
 
     (let* ((date (org-get-scheduled-time (point) nil))
-           (tags (nreverse (org-get-tags-at)))
+           (tags (nreverse (delete "export" (org-get-tags-at))))
            (meta-title (org-entry-get (point) "meta_title"))
            (is-page (string= (org-entry-get (point) "EXPORT_JEKYLL_LAYOUT") "page"))
            (name (org-entry-get (point) "filename"))
@@ -93,7 +99,6 @@ will be a sanitised version of the title, see
              (lambda (tag) (endless/convert-tag tag))
              tags " "))
            (org-export-show-temporary-export-buffer nil))
-
       (unless date
         (org-schedule nil ".")
         (setq date (current-time)))
